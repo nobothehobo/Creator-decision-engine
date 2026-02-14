@@ -434,3 +434,5 @@ if (els.attachYoutubeBtn) els.attachYoutubeBtn.addEventListener('click', () => c
 if (els.fetchYoutubeStatsBtn) els.fetchYoutubeStatsBtn.addEventListener('click', () => callYoutubePublic('snapshot'));
 
 setupTabs(); initTheme(); els.lastSaved.textContent = localStorage.getItem(STORAGE_KEY) ? `Last saved: ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Last saved: —'; rerender(); renderYoutubeSnapshots();
+
+setupTabs(); initTheme(); els.lastSaved.textContent = localStorage.getItem(STORAGE_KEY) ? `Last saved: ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Last saved: —'; rerender();
