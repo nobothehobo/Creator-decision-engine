@@ -1,12 +1,151 @@
 <!DOCTYPE html>
-<html>
-<head>
-  <title>Creator Compass</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <h1>Creator Compass</h1>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Creator Compass</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <h1>Creator Compass</h1>
+        <p class="subtitle">Video Log + Planner + Insights Engine</p>
+      </div>
+      <div class="status-wrap" aria-live="polite">
+        <span class="status-pill"><span class="dot"></span> Saved locally</span>
+        <span id="lastSaved" class="last-saved">Last saved: —</span>
+        <button id="themeToggle" class="btn btn-ghost" type="button">🌙 Dark</button>
+      </div>
+    </header>
 
-  <script src="app.js"></script>
-</body>
+    <nav class="container tabs" aria-label="Sections">
+      <button class="tab active" data-tab="log">Log</button>
+      <button class="tab" data-tab="planner">Planner</button>
+      <button class="tab" data-tab="analytics">Analytics</button>
+      <button class="tab" data-tab="insights">Insights</button>
+      <button class="tab" data-tab="data">Data</button>
+    </nav>
+
+    <main class="container layout">
+      <section class="card panel-video tab-panel active" data-panel="log">
+        <div class="section-head"><h2>Video Log</h2><span id="entryCount" class="badge">0 entries</span></div>
+        <form id="videoForm" novalidate>
+          <input type="hidden" id="entryId" />
+          <div class="form-grid">
+            <div><label for="title">Title *</label><input id="title" required maxlength="120" /><p id="titleError" class="error"></p></div>
+            <div><label for="platform">Platform</label><select id="platform"><option>YouTube</option><option>TikTok</option><option>Instagram</option><option>Other</option></select></div>
+            <div><label for="format">Format</label><select id="format"><option>Short</option><option>Long</option><option>Live</option><option>Other</option></select></div>
+            <div><label for="uploadDate">Upload date</label><input id="uploadDate" type="date" /></div>
+            <div><label for="views24h">Views after 24h</label><input id="views24h" type="number" min="0" step="1" /></div>
+            <div><label for="views7d">Views after 7 days</label><input id="views7d" type="number" min="0" step="1" /></div>
+            <div class="span-2"><label for="tags">Tags</label><input id="tags" placeholder="hooks, growth" /><p class="helper">Separate tags with commas.</p></div>
+            <div><label for="hookType">Hook type</label><select id="hookType"><option>Question</option><option>Cold open</option><option>Story</option><option>Shock</option><option>Demo</option><option>Other</option></select></div>
+            <div><label for="lengthSeconds">Length (seconds)</label><input id="lengthSeconds" type="number" min="0" step="1" /></div>
+            <div><label for="firstHourViews">Views in first hour</label><input id="firstHourViews" type="number" min="0" step="1" /></div>
+            <div><label for="retentionRating">Retention rating</label><select id="retentionRating"><option>Low</option><option>OK</option><option>Good</option></select></div>
+            <div><label for="ctaUsed">CTA used</label><select id="ctaUsed"><option>None</option><option>Comment prompt</option><option>Follow prompt</option><option>Other</option></select></div>
+            <div><label for="audioType">Audio type</label><select id="audioType"><option>Trending</option><option>Original</option><option>Voiceover</option><option>Other</option></select></div>
+            <div><label for="postTime">Post time</label><input id="postTime" type="time" /></div>
+            <div class="span-2"><label for="notes">Notes</label><textarea id="notes" rows="3"></textarea></div>
+          </div>
+          <p id="formError" class="error"></p>
+          <div class="actions"><button class="btn btn-primary" type="submit" id="submitBtn">Add Video</button><button class="btn btn-ghost" type="button" id="cancelEditBtn" hidden>Cancel Edit</button></div>
+        </form>
+
+        <div class="section-head mt"><h3>Library</h3></div>
+        <div class="controls-grid">
+          <div><label for="search">Search</label><input id="search" type="search" placeholder="title/tags" /></div>
+          <div><label for="filterPlatform">Platform</label><select id="filterPlatform"><option value="all">All</option><option>YouTube</option><option>TikTok</option><option>Instagram</option><option>Other</option></select></div>
+          <div><label for="filterFormat">Format</label><select id="filterFormat"><option value="all">All</option><option>Short</option><option>Long</option><option>Live</option><option>Other</option></select></div>
+          <div><label for="sortBy">Sort</label><select id="sortBy"><option value="dateDesc">Date (new)</option><option value="dateAsc">Date (old)</option><option value="views24hDesc">24h views</option><option value="views7dDesc">7d views</option></select></div>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Title</th><th>Platform</th><th>Format</th><th>Date</th><th>24h</th><th>7d</th><th>Hook</th><th>Tags</th><th>Actions</th></tr></thead><tbody id="libraryBody"></tbody></table></div>
+      </section>
+
+      <section class="card tab-panel" data-panel="planner">
+        <div class="section-head"><h2>Planner</h2><div class="pill-toggle"><button id="weekViewBtn" class="mini active" type="button">Week</button><button id="monthViewBtn" class="mini" type="button">Month</button></div></div>
+        <form id="planForm" novalidate>
+          <input type="hidden" id="planId" />
+          <div class="form-grid">
+            <div><label for="plannedDate">Planned date *</label><input id="plannedDate" type="date" required /><p id="planDateError" class="error"></p></div>
+            <div><label for="planPlatform">Platform</label><select id="planPlatform"><option>YouTube</option><option>TikTok</option><option>Instagram</option><option>Other</option></select></div>
+            <div><label for="planFormat">Format</label><select id="planFormat"><option>Short</option><option>Long</option><option>Live</option><option>Other</option></select></div>
+            <div><label for="planStatus">Status</label><select id="planStatus"><option>Planned</option><option>Filming</option><option>Editing</option><option>Scheduled</option><option>Posted</option></select></div>
+            <div class="span-2"><label for="planTitle">Title/idea</label><input id="planTitle" /></div>
+            <div class="span-2"><label for="planTags">Tags</label><input id="planTags" /></div>
+            <div class="span-2"><label for="planNotes">Notes</label><textarea id="planNotes" rows="2"></textarea></div>
+          </div>
+          <p id="planFormError" class="error"></p>
+          <div class="actions"><button class="btn btn-primary" type="submit" id="planSubmitBtn">Add Plan</button><button class="btn btn-ghost" type="button" id="cancelPlanEditBtn" hidden>Cancel Edit</button></div>
+        </form>
+
+        <div id="plannerList" class="planner-list"></div>
+      </section>
+
+      <section class="card tab-panel" data-panel="analytics">
+        <div class="section-head"><h2>Analytics</h2></div>
+        <div id="statsGrid" class="stats-grid"></div>
+        <div class="charts-grid">
+          <article class="chart-card"><h3>Views over time (7d)</h3><canvas id="timeChart"></canvas><div id="timeChartEmpty" class="chart-empty" hidden></div></article>
+          <article class="chart-card"><h3>Top tags by avg 7d</h3><canvas id="tagsChart"></canvas><div id="tagsChartEmpty" class="chart-empty" hidden></div></article>
+        </div>
+      </section>
+
+      <section class="card tab-panel" data-panel="insights">
+        <div class="section-head"><h2>Insights</h2><span id="confidenceBadge" class="badge">Confidence: Low</span></div>
+        <div class="insight-columns">
+          <div><h3>What’s working</h3><ul id="workingList" class="insights-list"></ul></div>
+          <div><h3>What to test next</h3><ul id="testingList" class="insights-list"></ul></div>
+          <div><h3>Quick wins</h3><ul id="winsList" class="insights-list"></ul></div>
+        </div>
+      </section>
+
+      <section class="card tab-panel" data-panel="data">
+        <div class="section-head"><h2>Data Tools</h2></div>
+        <div class="actions wrap">
+          <button id="exportBtn" class="btn btn-ghost" type="button">Export JSON</button>
+          <button id="exportCsvBtn" class="btn btn-ghost" type="button">Export CSV (Logs)</button>
+          <button id="exportPlannerCsvBtn" class="btn btn-ghost" type="button">Export CSV (Planner)</button>
+          <label for="importInput" class="btn btn-ghost">Import JSON</label><input id="importInput" type="file" accept="application/json" hidden />
+          <button id="resetBtn" class="btn btn-danger" type="button">Reset all data</button>
+        </div>
+        <p id="importError" class="error"></p>
+        <p class="helper">Local-only unless exported.</p>
+        <hr class="sep" />
+        <div class="section-head"><h3>YouTube Companion (No OAuth)</h3></div>
+        <div class="form-grid">
+          <div><label for="ideaIdInput">Idea ID</label><input id="ideaIdInput" type="number" min="1" placeholder="e.g. 42" /></div>
+          <div><label for="ideaYoutubeUrl">YouTube URL</label><input id="ideaYoutubeUrl" placeholder="https://www.youtube.com/watch?v=..." /></div>
+        </div>
+        <div class="actions wrap">
+          <button id="attachYoutubeBtn" class="btn btn-ghost" type="button">Attach video</button>
+          <button id="fetchYoutubeStatsBtn" class="btn btn-primary" type="button">Fetch snapshot</button>
+        </div>
+        <p id="youtubeFetchError" class="error"></p>
+
+        <div id="youtubeLatest" class="planner-day">No snapshot fetched yet.</div>
+        <div class="stats-grid" id="youtubeDerived"></div>
+        <article class="chart-card"><h3>Views trend</h3><canvas id="youtubeTrendChart"></canvas><div id="youtubeTrendEmpty" class="chart-empty" hidden></div></article>
+
+        <div class="section-head mt"><h3>Coach</h3></div>
+        <div class="insight-columns">
+          <div><h3>Diagnose</h3><ul id="coachDiagnose" class="insights-list"></ul></div>
+          <div><h3>Fix</h3><ul id="coachFix" class="insights-list"></ul></div>
+          <div><h3>Experiment</h3><ul id="coachExperiment" class="insights-list"></ul></div>
+        </div>
+
+        <div class="section-head mt"><h3>Snapshots</h3></div>
+        <div class="table-wrap"><table><thead><tr><th>Fetched At</th><th>Views</th><th>Likes</th><th>Comments</th><th>Views/hour</th></tr></thead><tbody id="youtubeSnapshotsTable"></tbody></table></div>
+        <div id="youtubeSnapshots" class="planner-list"></div>
+      </section>
+    </main>
+
+    <footer class="footer">Local-only. Your data stays on this device unless you export.</footer>
+
+    <div id="toast" class="toast" hidden>Saved</div>
+    <dialog id="resetDialog" class="modal"><form id="resetFormModal" class="modal-content"><h3>Reset all data?</h3><p>Type <strong>RESET</strong> to confirm.</p><input id="resetConfirmInput" /><p id="resetError" class="error"></p><div class="actions"><button class="btn btn-ghost" type="button" id="cancelResetBtn">Cancel</button><button class="btn btn-danger" type="submit">Delete everything</button></div></form></dialog>
+
+    <script src="app.js"></script>
+  </body>
 </html>

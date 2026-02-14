@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Idea {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  youtubeUrl  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  videos Video[]
+}
+
+model Video {
+  id           Int      @id @default(autoincrement())
+  ideaId       Int
+  videoId      String   @unique
+  title        String
+  publishedAt  DateTime
+  channelTitle String
+  createdAt    DateTime @default(now())
+
+  idea      Idea            @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  snapshots VideoSnapshot[]
+
+  @@index([ideaId, createdAt])
+  @@index([channelTitle])
+}
+
+model VideoSnapshot {
+  id           Int      @id @default(autoincrement())
+  videoRefId   Int
+  fetchedAt    DateTime @default(now())
+  viewCount    Int
+  likeCount    Int?
+  commentCount Int?
+
+  video Video @relation(fields: [videoRefId], references: [id], onDelete: Cascade)
+
+  @@index([videoRefId, fetchedAt])
+}
