@@ -112,6 +112,32 @@
         </div>
         <p id="importError" class="error"></p>
         <p class="helper">Local-only unless exported.</p>
+        <hr class="sep" />
+        <div class="section-head"><h3>YouTube Companion (No OAuth)</h3></div>
+        <div class="form-grid">
+          <div><label for="ideaIdInput">Idea ID</label><input id="ideaIdInput" type="number" min="1" placeholder="e.g. 42" /></div>
+          <div><label for="ideaYoutubeUrl">YouTube URL</label><input id="ideaYoutubeUrl" placeholder="https://www.youtube.com/watch?v=..." /></div>
+        </div>
+        <div class="actions wrap">
+          <button id="attachYoutubeBtn" class="btn btn-ghost" type="button">Attach video</button>
+          <button id="fetchYoutubeStatsBtn" class="btn btn-primary" type="button">Fetch snapshot</button>
+        </div>
+        <p id="youtubeFetchError" class="error"></p>
+
+        <div id="youtubeLatest" class="planner-day">No snapshot fetched yet.</div>
+        <div class="stats-grid" id="youtubeDerived"></div>
+        <article class="chart-card"><h3>Views trend</h3><canvas id="youtubeTrendChart"></canvas><div id="youtubeTrendEmpty" class="chart-empty" hidden></div></article>
+
+        <div class="section-head mt"><h3>Coach</h3></div>
+        <div class="insight-columns">
+          <div><h3>Diagnose</h3><ul id="coachDiagnose" class="insights-list"></ul></div>
+          <div><h3>Fix</h3><ul id="coachFix" class="insights-list"></ul></div>
+          <div><h3>Experiment</h3><ul id="coachExperiment" class="insights-list"></ul></div>
+        </div>
+
+        <div class="section-head mt"><h3>Snapshots</h3></div>
+        <div class="table-wrap"><table><thead><tr><th>Fetched At</th><th>Views</th><th>Likes</th><th>Comments</th><th>Views/hour</th></tr></thead><tbody id="youtubeSnapshotsTable"></tbody></table></div>
+        <div id="youtubeSnapshots" class="planner-list"></div>
       </section>
     </main>
 

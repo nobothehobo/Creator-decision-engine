@@ -14,12 +14,18 @@ const els = {
   timeChart: $('timeChart'), tagsChart: $('tagsChart'), timeChartEmpty: $('timeChartEmpty'), tagsChartEmpty: $('tagsChartEmpty'),
   exportBtn: $('exportBtn'), exportCsvBtn: $('exportCsvBtn'), exportPlannerCsvBtn: $('exportPlannerCsvBtn'), importInput: $('importInput'), importError: $('importError'),
   resetBtn: $('resetBtn'), resetDialog: $('resetDialog'), resetFormModal: $('resetFormModal'), resetConfirmInput: $('resetConfirmInput'), resetError: $('resetError'), cancelResetBtn: $('cancelResetBtn'),
+  ideaIdInput: $('ideaIdInput'), ideaYoutubeUrl: $('ideaYoutubeUrl'), attachYoutubeBtn: $('attachYoutubeBtn'), fetchYoutubeStatsBtn: $('fetchYoutubeStatsBtn'), youtubeFetchError: $('youtubeFetchError'), youtubeLatest: $('youtubeLatest'), youtubeSnapshots: $('youtubeSnapshots'), youtubeDerived: $('youtubeDerived'), youtubeTrendChart: $('youtubeTrendChart'), youtubeTrendEmpty: $('youtubeTrendEmpty'), youtubeSnapshotsTable: $('youtubeSnapshotsTable'), coachDiagnose: $('coachDiagnose'), coachFix: $('coachFix'), coachExperiment: $('coachExperiment'),
 };
 
 let entries = migrateEntries(loadJson(STORAGE_KEY, []));
 let plans = migratePlans(loadJson(PLANNER_KEY, []));
 let plannerViewMode = 'week';
 let hovered = null;
+let youtubeState = {
+  video: null,
+  snapshots: [],
+  channelBaseline: null,
+};
 
 function loadJson(key, fallback) { try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v ?? fallback; } catch { return fallback; } }
 function save() {
@@ -196,6 +202,148 @@ function drawTagsChart(tags) {
   tags.forEach((x, i) => { const bx = 48 + i * (bw + gap); const bh = (x.avg / max) * (h - 56); const by = h - 30 - bh; ctx.fillStyle = t.line; ctx.fillRect(bx, by, bw, bh); ctx.fillStyle = t.text; ctx.font = '11px sans-serif'; ctx.fillText(x.k.slice(0, 9), bx, h - 10); });
 }
 
+function metricsFromSnapshots(snapshots, publishedAt) {
+  if (!snapshots.length) return { viewsPerHour: 0, likesPer1k: 0, commentsPer1k: 0 };
+  const latest = snapshots[0];
+  const hours = Math.max(1, (new Date(latest.fetchedAt) - new Date(publishedAt)) / 3600000);
+  const viewsPerHour = latest.viewCount / hours;
+  const likesPer1k = latest.viewCount ? ((latest.likeCount || 0) / latest.viewCount) * 1000 : 0;
+  const commentsPer1k = latest.viewCount ? ((latest.commentCount || 0) / latest.viewCount) * 1000 : 0;
+  return { viewsPerHour, likesPer1k, commentsPer1k };
+}
+
+function drawYoutubeTrendChart() {
+  if (!els.youtubeTrendChart) return;
+  const points = [...youtubeState.snapshots].sort((a, b) => new Date(a.fetchedAt) - new Date(b.fetchedAt));
+  const { ctx, w, h } = setupCanvas(els.youtubeTrendChart);
+  const t = chartTheme();
+  ctx.clearRect(0, 0, w, h); axes(ctx, w, h, t, 'views');
+  if (!points.length) {
+    els.youtubeTrendEmpty.hidden = false;
+    els.youtubeTrendEmpty.innerHTML = '<div><strong>No trend yet</strong><br>Fetch 2+ snapshots to see trajectory.</div>';
+    return;
+  }
+  els.youtubeTrendEmpty.hidden = true;
+  const max = Math.max(...points.map((p) => p.viewCount), 1);
+  const chartPts = points.map((p, i) => ({ x: 48 + (i * (w - 66)) / Math.max(1, points.length - 1), y: h - 32 - ((p.viewCount / max) * (h - 56)), v: p.viewCount }));
+  ctx.strokeStyle = t.line; ctx.lineWidth = 2; ctx.beginPath();
+  chartPts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.stroke();
+  chartPts.forEach((p) => { ctx.fillStyle = t.line; ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill(); });
+}
+
+function renderCoach() {
+  const snaps = youtubeState.snapshots;
+  const diag = [];
+  const fix = [];
+  const experiment = [];
+  if (!youtubeState.video || !snaps.length) {
+    els.coachDiagnose.innerHTML = '<li>Attach a video and fetch snapshots to start coaching.</li>';
+    els.coachFix.innerHTML = '<li>Add at least 2 snapshots over a few hours to detect momentum.</li>';
+    els.coachExperiment.innerHTML = '<li>Next upload: test one title with a clear promise + specific audience.</li>';
+    return;
+  }
+
+  const latest = snaps[0];
+  const prev = snaps[1];
+  const metrics = metricsFromSnapshots(snaps, youtubeState.video.publishedAt);
+  const baseline = youtubeState.channelBaseline || { avgViewsPerHour: metrics.viewsPerHour, avgEngagementPer1k: metrics.likesPer1k + metrics.commentsPer1k };
+  const currentEngagement = metrics.likesPer1k + metrics.commentsPer1k;
+  const deltaViews = prev ? latest.viewCount - prev.viewCount : 0;
+
+  if (prev && deltaViews <= 0) diag.push('Growth is flat between the last two snapshots.');
+  else if (prev && deltaViews > 0) diag.push(`Growth is accelerating (+${deltaViews.toLocaleString()} views since last snapshot).`);
+  if (currentEngagement >= baseline.avgEngagementPer1k) diag.push('Engagement is at or above your channel baseline.');
+  else diag.push('Engagement is below your channel baseline right now.');
+
+  if (currentEngagement < baseline.avgEngagementPer1k) {
+    fix.push('Pin a comment with a specific response prompt (e.g., “Which part should I break down next?”).');
+    fix.push('Tighten title promise: make outcome + audience explicit in 50–60 chars.');
+  } else {
+    fix.push('Create a follow-up video in 24h that answers top comment questions from this upload.');
+  }
+
+  experiment.push('Next upload test: publish at your strongest window and compare first 2-hour views vs this video.');
+
+  els.coachDiagnose.innerHTML = diag.map((x) => `<li>${x}</li>`).join('');
+  els.coachFix.innerHTML = fix.slice(0, 2).map((x) => `<li>${x}</li>`).join('');
+  els.coachExperiment.innerHTML = experiment.map((x) => `<li>${x}</li>`).join('');
+}
+
+function renderYoutubeSnapshots() {
+  if (!els.youtubeLatest) return;
+  if (!youtubeState.video || !youtubeState.snapshots.length) {
+    els.youtubeLatest.textContent = 'No snapshot fetched yet.';
+    if (els.youtubeDerived) els.youtubeDerived.innerHTML = '';
+    if (els.youtubeSnapshotsTable) els.youtubeSnapshotsTable.innerHTML = '<tr><td colspan="5">No snapshots yet.</td></tr>';
+    drawYoutubeTrendChart();
+    renderCoach();
+    return;
+  }
+
+  const latest = youtubeState.snapshots[0];
+  els.youtubeLatest.innerHTML = `<strong>${esc(youtubeState.video.title)}</strong><div class="planner-meta">${esc(youtubeState.video.channelTitle)} • Published ${new Date(youtubeState.video.publishedAt).toLocaleString()}</div><div>Latest: ${new Date(latest.fetchedAt).toLocaleString()} • Views ${latest.viewCount.toLocaleString()} • Likes ${latest.likeCount ?? '—'} • Comments ${latest.commentCount ?? '—'}</div>`;
+
+  const m = metricsFromSnapshots(youtubeState.snapshots, youtubeState.video.publishedAt);
+  els.youtubeDerived.innerHTML = [
+    ['Views / hour', Math.round(m.viewsPerHour).toLocaleString()],
+    ['Likes / 1k views', m.likesPer1k.toFixed(2)],
+    ['Comments / 1k views', m.commentsPer1k.toFixed(2)],
+  ].map(([k, v]) => `<div class="stat"><p>${k}</p><strong>${v}</strong></div>`).join('');
+
+  els.youtubeSnapshotsTable.innerHTML = youtubeState.snapshots.map((s, idx) => {
+    const prev = youtubeState.snapshots[idx + 1];
+    const hours = prev ? Math.max(0.1, (new Date(s.fetchedAt) - new Date(prev.fetchedAt)) / 3600000) : Math.max(1, (new Date(s.fetchedAt) - new Date(youtubeState.video.publishedAt)) / 3600000);
+    const vph = prev ? (s.viewCount - prev.viewCount) / hours : s.viewCount / hours;
+    return `<tr><td>${new Date(s.fetchedAt).toLocaleString()}</td><td>${s.viewCount.toLocaleString()}</td><td>${s.likeCount ?? '—'}</td><td>${s.commentCount ?? '—'}</td><td>${Math.round(vph).toLocaleString()}</td></tr>`;
+  }).join('');
+
+  drawYoutubeTrendChart();
+  renderCoach();
+}
+
+async function callYoutubePublic(mode) {
+  if (!els.fetchYoutubeStatsBtn) return;
+  const ideaId = Number(els.ideaIdInput.value);
+  const youtubeUrl = els.ideaYoutubeUrl.value.trim();
+  els.youtubeFetchError.textContent = '';
+  if (!Number.isInteger(ideaId) || ideaId < 1) { els.youtubeFetchError.textContent = 'Provide a valid Idea ID.'; return; }
+  if (!youtubeUrl) { els.youtubeFetchError.textContent = 'Provide a YouTube URL.'; return; }
+
+  const btn = mode === 'attach' ? els.attachYoutubeBtn : els.fetchYoutubeStatsBtn;
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = mode === 'attach' ? 'Attaching...' : 'Fetching...';
+  try {
+    const res = await fetch('/api/youtube/public', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ideaId, youtubeUrl, mode }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed.');
+    youtubeState.video = {
+      videoId: data.videoId,
+      title: data.title,
+      publishedAt: data.publishedAt,
+      channelTitle: data.channelTitle,
+    };
+    youtubeState.snapshots = (data.snapshots || []).map((s) => ({
+      fetchedAt: s.fetchedAt,
+      viewCount: Number(s.viewCount || 0),
+      likeCount: s.likeCount == null ? null : Number(s.likeCount),
+      commentCount: s.commentCount == null ? null : Number(s.commentCount),
+    })).sort((a, b) => new Date(b.fetchedAt) - new Date(a.fetchedAt));
+    youtubeState.channelBaseline = data.channelBaseline || null;
+    renderYoutubeSnapshots();
+    showToast(mode === 'attach' ? 'Video attached' : 'Snapshot fetched');
+  } catch (err) {
+    els.youtubeFetchError.textContent = String(err.message || err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+}
+
 function rerender() { renderLibrary(); renderPlanner(); renderStatsInsights(); }
 
 els.form.addEventListener('submit', (e) => {
@@ -282,5 +430,9 @@ els.timeChart.addEventListener('mousemove', (e) => {
 });
 els.timeChart.addEventListener('mouseleave', () => { hovered = null; drawViewsChart(); });
 window.addEventListener('resize', () => { clearTimeout(window.__cc_r); window.__cc_r = setTimeout(renderStatsInsights, 140); });
+if (els.attachYoutubeBtn) els.attachYoutubeBtn.addEventListener('click', () => callYoutubePublic('attach'));
+if (els.fetchYoutubeStatsBtn) els.fetchYoutubeStatsBtn.addEventListener('click', () => callYoutubePublic('snapshot'));
+
+setupTabs(); initTheme(); els.lastSaved.textContent = localStorage.getItem(STORAGE_KEY) ? `Last saved: ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Last saved: —'; rerender(); renderYoutubeSnapshots();
 
 setupTabs(); initTheme(); els.lastSaved.textContent = localStorage.getItem(STORAGE_KEY) ? `Last saved: ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Last saved: —'; rerender();

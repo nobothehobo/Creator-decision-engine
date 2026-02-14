@@ -31,3 +31,5 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .modal{border:none;border-radius:14px;background:var(--card);color:var(--text);width:min(420px,calc(100% - 2rem))}.modal::backdrop{background:rgba(15,23,42,.5)}.modal-content{display:grid;gap:.4rem}
 @media(max-width:850px){.form-grid,.controls-grid{grid-template-columns:1fr}.span-2{grid-column:span 1}.topbar{flex-direction:column;align-items:flex-start}.status-wrap{justify-content:flex-start}}
 @media(min-width:900px){.charts-grid{grid-template-columns:1fr 1fr}.insight-columns{grid-template-columns:repeat(3,1fr)}}
+
+.sep{border:none;border-top:1px solid var(--border);margin:1rem 0}
